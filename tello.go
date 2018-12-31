@@ -306,7 +306,7 @@ func (tello *Tello) controlResponseListener() {
 				case msgDoTakePic:
 					log.Printf("Take Picture echoed with response: <%v>\n", pkt.payload)
 				case msgFileSize: // initial response to Take Picture command
-					log.Printf("Received file info\n")
+					//log.Printf("Received file info\n")
 					ft, fs, fID := payloadToFileInfo(pkt.payload)
 					//log.Printf("Take pic response: type: %d, size: %d, ID: %d\n", ft, fs, fID)
 					if ft != ftJPEG {
@@ -346,18 +346,18 @@ func (tello *Tello) controlResponseListener() {
 								tello.fileTemp.pieces[thisChunk.pieceNum].chunks = append(tello.fileTemp.pieces[thisChunk.pieceNum].chunks, thisChunk)
 								tello.fileTemp.accumSize += len(thisChunk.chunkData)
 								tello.fileTemp.pieces[thisChunk.pieceNum].numChunks++
-							} else {
+							} /* else {
 								log.Printf("Received chunk twice: piece %d, chunk %d\n", thisChunk.pieceNum, thisChunk.chunkNum)
-							}
+							}*/
 						}
 						tello.fdMu.Unlock()
 						if tello.fileTemp.pieces[thisChunk.pieceNum].numChunks == 8 {
 							// piece has 8 chunks, it's complete
 							tello.sendFileAckPiece(0, thisChunk.fID, thisChunk.pieceNum)
-							log.Printf("Acknowledging piece: %d\n", thisChunk.pieceNum)
+							//log.Printf("Acknowledging piece: %d\n", thisChunk.pieceNum)
 						}
 						if tello.fileTemp.accumSize == tello.fileTemp.expectedSize {
-							log.Printf("File completed\n")
+							//log.Printf("File completed\n")
 							tello.sendFileAckPiece(1, thisChunk.fID, thisChunk.pieceNum)
 							tello.sendFileDone(thisChunk.fID, tello.fileTemp.accumSize)
 							tello.reassembleFile()
