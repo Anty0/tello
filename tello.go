@@ -306,8 +306,8 @@ func (tello *Tello) controlResponseListener() {
 				case msgDoTakePic:
 					log.Printf("Take Picture echoed with response: <%v>\n", pkt.payload)
 				case msgFileSize: // initial response to Take Picture command
-					//log.Printf("Received file info\n")
 					ft, fs, fID := payloadToFileInfo(pkt.payload)
+					log.Printf("Received file info: %d\n", fID)
 					//log.Printf("Take pic response: type: %d, size: %d, ID: %d\n", ft, fs, fID)
 					if ft != ftJPEG {
 						log.Printf("Unexpected file type <%d> received in response to take picture command\n", ft)
@@ -357,7 +357,7 @@ func (tello *Tello) controlResponseListener() {
 							//log.Printf("Acknowledging piece: %d\n", thisChunk.pieceNum)
 						}
 						if tello.fileTemp.accumSize == tello.fileTemp.expectedSize {
-							//log.Printf("File completed\n")
+							log.Printf("File completed: %d\n", thisChunk.fID)
 							tello.sendFileAckPiece(1, thisChunk.fID, thisChunk.pieceNum)
 							tello.sendFileDone(thisChunk.fID, tello.fileTemp.accumSize)
 							tello.reassembleFile()
