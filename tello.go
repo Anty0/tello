@@ -306,6 +306,7 @@ func (tello *Tello) controlResponseListener() {
 				case msgDoTakePic:
 					log.Printf("Take Picture echoed with response: <%v>\n", pkt.payload)
 				case msgFileSize: // initial response to Take Picture command
+					log.Printf("Received file info\n")
 					ft, fs, fID := payloadToFileInfo(pkt.payload)
 					//log.Printf("Take pic response: type: %d, size: %d, ID: %d\n", ft, fs, fID)
 					if ft != ftJPEG {
@@ -320,41 +321,53 @@ func (tello *Tello) controlResponseListener() {
 						tello.fileTemp.expectedSize = int(fs)
 						tello.fileTemp.accumSize = 0
 						tello.fileTemp.pieces = make([]filePiece, 1024)
+						tello.fileTemp.open = true
 						tello.fdMu.Unlock()
 						// acknowledge the file size
 						tello.sendFileSize()
 					}
 				case msgFileData:
 					thisChunk := payloadToFileChunk(pkt.payload)
-					tello.fdMu.Lock()
-					//log.Printf("Got pic chunk - ID: %d, Piece: %d, Chunk: %d\n", thisChunk.fID, thisChunk.pieceNum, thisChunk.chunkNum)
-					for len(tello.fileTemp.pieces) <= int(thisChunk.pieceNum) {
-						tello.fileTemp.pieces = append(tello.fileTemp.pieces, filePiece{})
-					}
-					if tello.fileTemp.pieces[thisChunk.pieceNum].numChunks < 8 {
-						// check if we already have this chunk
-						already := false
-						for _, c := range tello.fileTemp.pieces[thisChunk.pieceNum].chunks {
-							if c.chunkNum == thisChunk.chunkNum {
-								already = true
+					if tello.fileTemp.open && thisChunk.fID == tello.fileTemp.fID {
+						tello.fdMu.Lock()
+						//log.Printf("Got pic chunk - ID: %d, Piece: %d, Chunk: %d\n", thisChunk.fID, thisChunk.pieceNum, thisChunk.chunkNum)
+						for len(tello.fileTemp.pieces) <= int(thisChunk.pieceNum) {
+							tello.fileTemp.pieces = append(tello.fileTemp.pieces, filePiece{})
+						}
+						if tello.fileTemp.pieces[thisChunk.pieceNum].numChunks < 8 {
+							// check if we already have this chunk
+							already := false
+							for _, c := range tello.fileTemp.pieces[thisChunk.pieceNum].chunks {
+								if c.chunkNum == thisChunk.chunkNum {
+									already = true
+								}
+							}
+							if !already {
+								tello.fileTemp.pieces[thisChunk.pieceNum].chunks = append(tello.fileTemp.pieces[thisChunk.pieceNum].chunks, thisChunk)
+								tello.fileTemp.accumSize += len(thisChunk.chunkData)
+								tello.fileTemp.pieces[thisChunk.pieceNum].numChunks++
+							} else {
+								log.Printf("Received chunk twice: piece %d, chunk %d\n", thisChunk.pieceNum, thisChunk.chunkNum)
 							}
 						}
-						if !already {
-							tello.fileTemp.pieces[thisChunk.pieceNum].chunks = append(tello.fileTemp.pieces[thisChunk.pieceNum].chunks, thisChunk)
-							tello.fileTemp.accumSize += len(thisChunk.chunkData)
+						tello.fdMu.Unlock()
+						if tello.fileTemp.pieces[thisChunk.pieceNum].numChunks == 8 {
+							// piece has 8 chunks, it's complete
+							tello.sendFileAckPiece(0, thisChunk.fID, thisChunk.pieceNum)
+							log.Printf("Acknowledging piece: %d\n", thisChunk.pieceNum)
 						}
-					}
-					tello.fileTemp.pieces[thisChunk.pieceNum].numChunks++
-					tello.fdMu.Unlock()
-					if tello.fileTemp.pieces[thisChunk.pieceNum].numChunks == 8 {
-						// piece has 8 chunks, it's complete
+						if tello.fileTemp.accumSize == tello.fileTemp.expectedSize {
+							log.Printf("File completed\n")
+							tello.sendFileAckPiece(1, thisChunk.fID, thisChunk.pieceNum)
+							tello.sendFileDone(thisChunk.fID, tello.fileTemp.accumSize)
+							tello.reassembleFile()
+						}
+					} else {
+						if tello.fileTemp.open {
+							log.Panicf("Received FileData for different file '%d', current file is '%d', it's peace will be acknowledged as completed\n", thisChunk.fID, tello.fileTemp.fID)
+						} // else { /* Some garbage pieces from previous transmission received, time to acknowledge them again... */ }
 						tello.sendFileAckPiece(0, thisChunk.fID, thisChunk.pieceNum)
-						//log.Printf("Acknowledging piece: %d\n", thisChunk.pieceNum)
-					}
-					if tello.fileTemp.accumSize == tello.fileTemp.expectedSize {
-						tello.sendFileAckPiece(1, thisChunk.fID, thisChunk.pieceNum)
-						tello.sendFileDone(thisChunk.fID, tello.fileTemp.accumSize)
-						tello.reassembleFile()
+						// TODO: Add support for multiple file reassembly at the same time
 					}
 				//case msgFileDone:
 				case msgFlightStatus:

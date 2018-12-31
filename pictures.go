@@ -84,22 +84,24 @@ func (tello *Tello) reassembleFile() {
 	tello.fdMu.Lock()
 	defer tello.fdMu.Unlock()
 
-	fd.fileType = tello.fileTemp.filetype
-	fd.fileSize = tello.fileTemp.accumSize
-	// we expect the pieces to be in order
-	for _, p := range tello.fileTemp.pieces {
-		// the chunks may not be in order, we must sort them
-		if p.numChunks > 1 {
-			sort.Slice(p.chunks, func(i, j int) bool {
-				return int(p.chunks[i].chunkNum) < int(p.chunks[j].chunkNum)
-			})
+	if tello.fileTemp.open {
+		fd.fileType = tello.fileTemp.filetype
+		fd.fileSize = tello.fileTemp.accumSize
+		// we expect the pieces to be in order
+		for _, p := range tello.fileTemp.pieces {
+			// the chunks may not be in order, we must sort them
+			if p.numChunks > 1 {
+				sort.Slice(p.chunks, func(i, j int) bool {
+					return int(p.chunks[i].chunkNum) < int(p.chunks[j].chunkNum)
+				})
+			}
+			for _, c := range p.chunks {
+				fd.fileBytes = append(fd.fileBytes, c.chunkData...)
+			}
 		}
-		for _, c := range p.chunks {
-			fd.fileBytes = append(fd.fileBytes, c.chunkData...)
-		}
+		tello.files = append(tello.files, fd)
 	}
-	tello.files = append(tello.files, fd)
-	tello.fileTemp = fileInternal{}
+	tello.fileTemp = fileInternal{open: false}
 }
 
 // NumPics returns the number of JPEG pictures we are storing in memory

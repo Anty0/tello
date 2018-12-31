@@ -166,6 +166,7 @@ type fileData struct {
 }
 
 type fileInternal struct {
+	open         bool
 	fID          uint16
 	filetype     fileType
 	expectedSize int
