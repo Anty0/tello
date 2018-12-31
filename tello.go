@@ -366,7 +366,7 @@ func (tello *Tello) controlResponseListener() {
 						if tello.fileTemp.open {
 							log.Panicf("Received FileData for different file '%d', current file is '%d', it's peace will be acknowledged as completed\n", thisChunk.fID, tello.fileTemp.fID)
 						} // else { /* Some garbage pieces from previous transmission received, time to acknowledge them again... */ }
-						tello.sendFileAckPiece(0, thisChunk.fID, thisChunk.pieceNum)
+						tello.sendFileAckPiece(1, thisChunk.fID, thisChunk.pieceNum)
 						// TODO: Add support for multiple file reassembly at the same time
 					}
 				//case msgFileDone:
