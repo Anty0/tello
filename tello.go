@@ -41,7 +41,7 @@ const (
 	defaultLocalControlPort = 8800
 )
 
-const keepAlivePeriodMs = 50
+const keepAlivePeriodMs = 25
 
 // Tello holds the current state of a connection to a Tello drone.
 type Tello struct {
@@ -197,6 +197,18 @@ func (tello *Tello) GetMaxHeight() {
 
 	tello.ctrlSeq++
 	pkt := newPacket(ptGet, msgQueryHeightLimit, tello.ctrlSeq, 0)
+	tello.ctrlConn.Write(packetToBuffer(pkt))
+}
+
+// SetMaxHeight sets max flight height // TODO: test
+func (tello *Tello) SetMaxHeight(maxHeight uint16) {
+	tello.ctrlMu.Lock()
+	defer tello.ctrlMu.Unlock()
+
+	tello.ctrlSeq++
+	pkt := newPacket(ptSet, msgSetHeightLimit, tello.ctrlSeq, 2)
+	pkt.payload[0] = uint8((maxHeight & 0xFF00) >> 8)
+	pkt.payload[1] = uint8(maxHeight & 0x00FF)
 	tello.ctrlConn.Write(packetToBuffer(pkt))
 }
 
@@ -522,7 +534,7 @@ func (tello *Tello) sendDateTime() {
 func (tello *Tello) keepAlive() {
 	for {
 		if tello.ControlConnected() {
-			tello.sendStickUpdate()
+			//tello.sendStickUpdate()
 		} else {
 			return // we've disconnected
 		}
@@ -572,6 +584,7 @@ func (tello *Tello) UpdateSticks(sm StickMessage) {
 	tello.ctrlRx = sm.Rx
 	tello.ctrlRy = sm.Ry
 	tello.ctrlMu.Unlock()
+	tello.sendStickUpdate()
 }
 
 func jsFloatToTello(fv float64) uint64 {

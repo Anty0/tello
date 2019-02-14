@@ -149,6 +149,7 @@ func (tello *Tello) Hover() {
 	tello.ctrlRx = 0
 	tello.ctrlRy = 0
 	tello.ctrlMu.Unlock()
+	tello.sendStickUpdate()
 }
 
 // Forward tells the drone to start moving forward at a given speed between 0 and 100.
@@ -243,6 +244,7 @@ func (tello *Tello) SetSportsMode(sports bool) {
 	tello.ctrlMu.Lock()
 	tello.ctrlSportsMode = sports
 	tello.ctrlMu.Unlock()
+	tello.sendStickUpdate()
 }
 
 // SetFastMode sets the 'fast' or 'sports' mode of flight.

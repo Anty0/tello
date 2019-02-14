@@ -117,7 +117,7 @@ func (tello *Tello) AutoFlyToHeight(dm int16) (done chan bool, err error) {
 				tello.autoHeightMu.Unlock()
 			}
 			tello.ctrlMu.Unlock()
-			//tello.sendStickUpdate()
+			tello.sendStickUpdate()
 
 			time.Sleep(autopilotPeriodMs * time.Millisecond)
 		}
@@ -219,7 +219,7 @@ func (tello *Tello) AutoTurnToYaw(targetYaw int16) (done chan bool, err error) {
 				tello.autoYawMu.Unlock()
 			}
 			tello.ctrlMu.Unlock()
-			//tello.sendStickUpdate()
+			tello.sendStickUpdate()
 
 			time.Sleep(autopilotPeriodMs * time.Millisecond)
 		}
@@ -417,7 +417,7 @@ func (tello *Tello) AutoFlyToXY(targetX, targetY float32) (done chan bool, err e
 				tello.autoXYMu.Unlock()
 			}
 			tello.ctrlMu.Unlock()
-			//tello.sendStickUpdate()
+			tello.sendStickUpdate()
 
 			time.Sleep(autopilotPeriodMs * time.Millisecond)
 		}
